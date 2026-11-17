@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบวิเคราะห์รูปภาพด้วย AI (Teachable Machine)</title>
-    <!-- นำเข้าฟอนต์ภาษาไทย Prompt จาก Google Fonts -->
+    <title>ระบบวิเคราะห์รูปภาพด้วย AI</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * {
@@ -46,7 +45,6 @@
             margin-bottom: 24px;
         }
 
-        /* สถานะการโหลดโมเดล */
         #status {
             display: inline-block;
             padding: 6px 14px;
@@ -63,7 +61,6 @@
             color: #15803d;
         }
 
-        /* ซ่อน input file ดั้งเดิมแล้วตกแต่งปุ่มใหม่ */
         input[type="file"] {
             display: none;
         }
@@ -81,222 +78,4 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            width: 100%;
-        }
-
-        .upload-btn:hover {
-            background-color: #2563eb;
-            transform: translateY(-2px);
-        }
-
-        .upload-btn.disabled {
-            background-color: #94a3b8;
-            cursor: not-allowed;
-            pointer-events: none;
-            box-shadow: none;
-        }
-
-        /* พื้นที่แสดงรูปภาพตัวอย่าง */
-        .preview-box {
-            margin-top: 24px;
-            width: 100%;
-            min-height: 220px;
-            border: 2px dashed #cbd5e1;
-            border-radius: 16px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            background-color: #f8fafc;
-            position: relative;
-        }
-
-        .preview-box img {
-            max-width: 100%;
-            max-height: 300px;
-            display: none;
-            border-radius: 12px;
-            object-fit: contain;
-        }
-
-        .placeholder-text {
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-
-        /* ส่วนแสดงผลการวิเคราะห์ */
-        #label-container {
-            margin-top: 24px;
-            text-align: left;
-            display: none; /* ซ่อนไว้ก่อนจนกว่าจะมีรูป */
-        }
-
-        .result-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #334155;
-            margin-bottom: 12px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 6px;
-        }
-
-        .prediction-item {
-            margin-bottom: 14px;
-        }
-
-        .prediction-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.95rem;
-            margin-bottom: 4px;
-            color: #1e293b;
-            font-weight: 500;
-        }
-
-        .progress-bg {
-            width: 100%;
-            height: 10px;
-            background-color: #e2e8f0;
-            border-radius: 999px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: #3b82f6;
-            border-radius: 999px;
-            transition: width 0.4s ease;
-        }
-
-        /* ไฮไลต์อันดับ 1 */
-        .prediction-item.top-result .progress-fill {
-            background-color: #10b981;
-        }
-        .prediction-item.top-result .prediction-header {
-            color: #059669;
-            font-weight: 600;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>ระบบวิเคราะห์รูปภาพ AI</h1>
-    <p class="subtitle">อัปโหลดรูปภาพ 1 รูปเพื่อจำแนกประเภทด้วยโมเดล</p>
-
-    <div id="status">⏳ กำลังโหลดโมเดล AI...</div>
-
-    <!-- ปุ่มอัปโหลดรูปภาพ -->
-    <label for="image-upload" id="upload-label" class="upload-btn disabled">
-        📁 เลือกรูปภาพจากเครื่อง
-    </label>
-    <input type="file" id="image-upload" accept="image/*" onchange="handleImageUpload(event)">
-
-    <!-- กล่องแสดงรูปตัวอย่าง -->
-    <div class="preview-box">
-        <span class="placeholder-text" id="placeholder">ยังไม่มีรูปภาพที่เลือก</span>
-        <img id="image-preview" alt="รูปภาพตัวอย่างสำหรับวิเคราะห์">
-    </div>
-
-    <!-- กล่องแสดงผลการวิเคราะห์ -->
-    <div id="label-container">
-        <div class="result-title">ผลการวิเคราะห์ความน่าจะเป็น</div>
-        <div id="predictions-list"></div>
-    </div>
-</div>
-
-<!-- นำเข้าไลบรารี TensorFlow.js และ Teachable Machine -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-
-<script type="text/javascript">
-    // ลิงก์โมเดลเดิมของคุณ
-    const URL = "https://teachablemachine.withgoogle.com/models/pfr7PNmqB/";
-
-    let model, maxPredictions;
-
-    // 1. โหลดโมเดลทันทีเมื่อเปิดหน้าเว็บ
-    async function loadModel() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-
-        try {
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
-
-            // อัปเดตสถานะเมื่อโหลดสำเร็จ และเปิดให้กดปุ่มอัปโหลดได้
-            const statusEl = document.getElementById("status");
-            statusEl.textContent = "✅ โมเดลพร้อมใช้งานแล้ว";
-            statusEl.classList.add("ready");
-
-            document.getElementById("upload-label").classList.remove("disabled");
-        } catch (error) {
-            document.getElementById("status").textContent = "❌ เกิดข้อผิดพลาดในการโหลดโมเดล";
-            console.error(error);
-        }
-    }
-
-    // 2. จัดการเมื่อผู้ใช้เลือกไฟล์รูปภาพ
-    function handleImageUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const imgElement = document.getElementById("image-preview");
-            const placeholder = document.getElementById("placeholder");
-
-            imgElement.src = e.target.result;
-            imgElement.style.display = "block";
-            placeholder.style.display = "none";
-
-            // รอให้รูปภาพโหลดลงในแท็ก <img> เสร็จสมบูรณ์ก่อนจึงสั่งวิเคราะห์
-            imgElement.onload = function() {
-                predict(imgElement);
-            };
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // 3. วิเคราะห์รูปภาพและแสดงผล
-    async function predict(imageElement) {
-        // ส่งแท็ก <img> เข้าไปให้โมเดลทำนายผล
-        const prediction = await model.predict(imageElement);
-
-        // เรียงลำดับผลลัพธ์จากเปอร์เซ็นต์มากไปน้อย
-        prediction.sort((a, b) => b.probability - a.probability);
-
-        const labelContainer = document.getElementById("label-container");
-        const predictionsList = document.getElementById("predictions-list");
-        
-        labelContainer.style.display = "block";
-        predictionsList.innerHTML = ""; // ล้างผลลัพธ์เก่า
-
-        for (let i = 0; i < maxPredictions; i++) {
-            const className = prediction[i].className;
-            const percentage = (prediction[i].probability * 100).toFixed(1);
-
-            // สร้างแถบแสดงผล
-            const itemDiv = document.createElement("div");
-            itemDiv.className = "prediction-item" + (i === 0 ? " top-result" : "");
-
-            itemDiv.innerHTML = `
-                <div class="prediction-header">
-                    <span>${className}</span>
-                    <span>${percentage}%</span>
-                </div>
-                <div class="progress-bg">
-                    <div class="progress-fill" style="width: ${percentage}%"></div>
-                </div>
-            `;
-            predictionsList.appendChild(itemDiv);
-        }
-    }
-
-    // เริ่มโหลดโมเดลอัตโนมัติ
-    window.addEventListener("DOMContentLoaded", loadModel);
-</script>
-
-</body>
-</html>
+            box-shadow: 0 4px 12px rgba(59, 130, 24
